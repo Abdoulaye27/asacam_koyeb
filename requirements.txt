@@ -15,5 +15,4 @@ requests
 gunicorn
 psycopg2
 opencv-python-headless==4.10.0.84
-eventlet
-gevent==24.11.1
+eventlet==0.35.2
