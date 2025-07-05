@@ -26,9 +26,17 @@ mail = Mail(app)
 api_key = app.config.get('OPEN_AI_KEY')
 stripe.api_key = app.config.get('STRIPE_SECRET_KEY', 'placeholder')
 
-# Create database tables
-with app.app_context():
-    db.create_all()
+def init_db():
+    """Initialize database tables"""
+    with app.app_context():
+        try:
+            db.create_all()
+            print("Database tables created successfully")
+        except Exception as e:
+            print(f"Database initialization: {e}")
+
+# Initialize database tables
+init_db()
 
 # Login manager setup
 login_manager = LoginManager()
