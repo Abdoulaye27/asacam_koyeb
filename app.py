@@ -374,8 +374,11 @@ def logout():
     return redirect(url_for('login'))
 
 # Create database tables
-with app.app_context():
-    db.create_all()
+# with app.app_context():
+#     db.create_all()
+if app.config.get("ENV") == "development":
+    with app.app_context():
+        db.create_all(checkfirst=True)
 
 if __name__ == '__main__':
     app.run(threaded=True, debug=True)
