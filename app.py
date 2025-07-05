@@ -614,43 +614,104 @@ def get_rtsp_config():
 def test_rtsp_connection():
     """Test RTSP connection without starting stream"""
     try:
-        test_camera = cv2.VideoCapture(DEFAULT_RTSP_URL)
-        test_camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        logger.info(f"Testing RTSP connection to: {DEFAULT_RTSP_URL}")
         
-        # Try to open with shorter timeout
-        start_time = time.time()
-        while not test_camera.isOpened() and (time.time() - start_time) < 10:
-            time.sleep(0.5)
+        # Try different connection methods
+        test_methods = [
+            DEFAULT_RTSP_URL,
+            DEFAULT_RTSP_URL.replace('?tcp', ''),  # Try without TCP
+            DEFAULT_RTSP_URL.replace('?tcp', '?udp'),  # Try UDP
+        ]
         
-        if test_camera.isOpened():
-            ret, frame = test_camera.read()
-            test_camera.release()
+        for i, test_url in enumerate(test_methods):
+            logger.info(f"Trying method {i+1}: {test_url}")
             
-            if ret:
-                return jsonify({
-                    "status": "success",
-                    "message": "RTSP connection successful",
-                    "rtsp_url": DEFAULT_RTSP_URL
-                })
+            test_camera = cv2.VideoCapture(test_url)
+            test_camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            test_camera.set(cv2.CAP_PROP_TIMEOUT, 5000)  # 5 second timeout
+            
+            # Try to open with shorter timeout
+            start_time = time.time()
+            while not test_camera.isOpened() and (time.time() - start_time) < 8:
+                time.sleep(0.5)
+            
+            if test_camera.isOpened():
+                ret, frame = test_camera.read()
+                test_camera.release()
+                
+                if ret:
+                    return jsonify({
+                        "status": "success",
+                        "message": f"RTSP connection successful with method {i+1}",
+                        "rtsp_url": test_url,
+                        "working_url": test_url
+                    })
+                else:
+                    logger.warning(f"Method {i+1} opened but cannot read frames")
+                    test_camera.release()
             else:
-                return jsonify({
-                    "status": "error",
-                    "message": "RTSP connection opened but cannot read frames",
-                    "rtsp_url": DEFAULT_RTSP_URL
-                }), 400
-        else:
-            test_camera.release()
-            return jsonify({
-                "status": "error",
-                "message": "RTSP connection failed - camera not accessible",
-                "rtsp_url": DEFAULT_RTSP_URL
-            }), 400
+                test_camera.release()
+                logger.warning(f"Method {i+1} failed to open")
+        
+        # If all methods failed
+        return jsonify({
+            "status": "error",
+            "message": "All RTSP connection methods failed - camera may not be accessible from this server",
+            "rtsp_url": DEFAULT_RTSP_URL,
+            "tested_methods": test_methods
+        }), 400
             
     except Exception as e:
+        logger.error(f"RTSP connection error: {str(e)}")
         return jsonify({
             "status": "error",
             "message": f"RTSP connection error: {str(e)}",
             "rtsp_url": DEFAULT_RTSP_URL
+        }), 500
+
+
+@app.route('/test_network_connectivity', methods=['GET'])
+@login_required
+def test_network_connectivity():
+    """Test basic network connectivity to the camera IP"""
+    import socket
+    
+    try:
+        # Extract IP from RTSP URL
+        rtsp_url = DEFAULT_RTSP_URL
+        if 'rtsp://' in rtsp_url:
+            # Extract IP address from rtsp://admin:admin@98.42.225.230:554/11?tcp
+            ip_part = rtsp_url.split('@')[1].split(':')[0]
+            port = 554  # Default RTSP port
+            
+            logger.info(f"Testing network connectivity to {ip_part}:{port}")
+            
+            # Test TCP connection
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(5)  # 5 second timeout
+            
+            result = sock.connect_ex((ip_part, port))
+            sock.close()
+            
+            if result == 0:
+                return jsonify({
+                    "status": "success",
+                    "message": f"Network connectivity to {ip_part}:{port} is working",
+                    "ip": ip_part,
+                    "port": port
+                })
+            else:
+                return jsonify({
+                    "status": "error",
+                    "message": f"Cannot reach {ip_part}:{port} - network connectivity issue",
+                    "ip": ip_part,
+                    "port": port
+                }), 400
+                
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"Network test error: {str(e)}"
         }), 500
 
 
