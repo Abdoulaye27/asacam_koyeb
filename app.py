@@ -16,7 +16,7 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 app.config.from_object(Config)
-prompt="Act as a security monitor. Describe what you see and alert if anything unusual or dangerous is happening."
+prompt="Act as a security monitor. Describe what you see and alert if anything dangerous is happening."
 title='Security Monitoring'
 url = 0
 
