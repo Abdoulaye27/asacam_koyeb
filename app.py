@@ -449,8 +449,13 @@ def initialize_camera():
         # Always use environment variable
         rtsp_url = DEFAULT_RTSP_URL
 
+        # Set OpenCV timeout and buffer settings for RTSP
         camera = cv2.VideoCapture(rtsp_url)
-
+        
+        # Configure camera settings for RTSP
+        camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Reduce buffer size
+        camera.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'H264'))  # Use H264 codec
+        
         start_time = time.time()
         last_log = 0
 
@@ -602,6 +607,51 @@ def get_rtsp_config():
         "is_environment_set": bool(os.environ.get('RTSP_URL')),
         "message": "RTSP URL is always configured via RTSP_URL environment variable"
     })
+
+
+@app.route('/test_rtsp_connection', methods=['GET'])
+@login_required
+def test_rtsp_connection():
+    """Test RTSP connection without starting stream"""
+    try:
+        test_camera = cv2.VideoCapture(DEFAULT_RTSP_URL)
+        test_camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        
+        # Try to open with shorter timeout
+        start_time = time.time()
+        while not test_camera.isOpened() and (time.time() - start_time) < 10:
+            time.sleep(0.5)
+        
+        if test_camera.isOpened():
+            ret, frame = test_camera.read()
+            test_camera.release()
+            
+            if ret:
+                return jsonify({
+                    "status": "success",
+                    "message": "RTSP connection successful",
+                    "rtsp_url": DEFAULT_RTSP_URL
+                })
+            else:
+                return jsonify({
+                    "status": "error",
+                    "message": "RTSP connection opened but cannot read frames",
+                    "rtsp_url": DEFAULT_RTSP_URL
+                }), 400
+        else:
+            test_camera.release()
+            return jsonify({
+                "status": "error",
+                "message": "RTSP connection failed - camera not accessible",
+                "rtsp_url": DEFAULT_RTSP_URL
+            }), 400
+            
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"RTSP connection error: {str(e)}",
+            "rtsp_url": DEFAULT_RTSP_URL
+        }), 500
 
 
 # OpenAI integration functions
