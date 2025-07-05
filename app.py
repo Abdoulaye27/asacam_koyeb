@@ -436,7 +436,7 @@ def initialize_camera():
     """Robust camera initialization that allows long waits"""
     global camera, url
 
-    MAX_WAIT = 90  # seconds
+    MAX_WAIT = 600  # seconds
     LOG_INTERVAL = 5
 
     try:
