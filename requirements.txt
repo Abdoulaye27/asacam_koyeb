@@ -16,3 +16,4 @@ gunicorn
 psycopg2
 opencv-python
 eventlet
+gevent==24.11.1
