@@ -432,9 +432,12 @@ video_queue = queue.Queue(maxsize=10)
 description_queue = queue.Queue(maxsize=50)
 is_streaming = False
 camera = None
+
+# Get RTSP URL from environment variable or use default
+DEFAULT_RTSP_URL = os.environ.get('RTSP_URL', 'rtsp://admin:admin@10.0.0.134:554/11')
 def initialize_camera():
     """Robust camera initialization that allows long waits"""
-    global camera, url
+    global camera
 
     MAX_WAIT = 600  # seconds
     LOG_INTERVAL = 5
@@ -443,10 +446,10 @@ def initialize_camera():
         if camera is not None:
             camera.release()
 
-        if url == '0':
-            url = 0
+        # Always use environment variable
+        rtsp_url = DEFAULT_RTSP_URL
 
-        camera = cv2.VideoCapture(url)
+        camera = cv2.VideoCapture(rtsp_url)
 
         start_time = time.time()
         last_log = 0
@@ -556,11 +559,9 @@ def video_feed():
 @login_required
 def start_stream():
     """Start video streaming"""
-    global is_streaming, url
+    global is_streaming
 
-    data =  request.get_json()
-    url = data.get('url')    
-
+    # Always use environment variable, ignore any URL from request
     if not is_streaming:
         if initialize_camera():
             is_streaming = True
@@ -590,6 +591,17 @@ def stop_stream():
     """Stop video streaming"""
     cleanup_camera()
     return jsonify({"status": "success", "message": "Stream stopped"})
+
+
+@app.route('/get_rtsp_config', methods=['GET'])
+@login_required
+def get_rtsp_config():
+    """Get current RTSP configuration"""
+    return jsonify({
+        "rtsp_url": DEFAULT_RTSP_URL,
+        "is_environment_set": bool(os.environ.get('RTSP_URL')),
+        "message": "RTSP URL is always configured via RTSP_URL environment variable"
+    })
 
 
 # OpenAI integration functions
