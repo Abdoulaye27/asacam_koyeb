@@ -26,6 +26,10 @@ mail = Mail(app)
 api_key = app.config.get('OPEN_AI_KEY')
 stripe.api_key = app.config.get('STRIPE_SECRET_KEY', 'placeholder')
 
+# Create database tables
+with app.app_context():
+    db.create_all()
+
 # Login manager setup
 login_manager = LoginManager()
 login_manager.init_app(app)
